@@ -2,6 +2,11 @@ name: Build Antigravity NewPipe
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0). Leave empty to use auto-increment.'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -11,6 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: NewPipe
+          fetch-depth: 0 # Full history for tags
 
       - name: Checkout sing-box
         uses: actions/checkout@v4
@@ -59,25 +65,40 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Generate Changelog
-        id: changelog
+      - name: Generate Release Info
+        id: release_info
         working-directory: ./NewPipe
         run: |
-          # Get the last tag, default to initial commit if no tags
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          echo "Last tag: $LAST_TAG"
+          # 1. Determine Tag Name
+          INPUT_TAG="${{ inputs.tag_name }}"
           
-          # Generate changelog from last tag to HEAD
+          if [ -n "$INPUT_TAG" ]; then
+            TAG_NAME="$INPUT_TAG"
+          else
+            # Get the last tag that matches our pattern (e.g. antigravity-*)
+            LAST_TAG=$(git describe --tags --match "antigravity-*" --abbrev=0 2>/dev/null || echo "antigravity-0")
+            # Extract number
+            LAST_NUM=$(echo $LAST_TAG | awk -F- '{print $2}')
+            # Increment
+            NEXT_NUM=$((LAST_NUM + 1))
+            TAG_NAME="antigravity-$NEXT_NUM"
+          fi
+          
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "Tagging as: $TAG_NAME"
+          
+          # 2. Generate Changelog
+          LAST_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          git log ${LAST_TAG}..HEAD --pretty=format:"* %h %s" --no-merges >> $GITHUB_ENV
+          git log ${LAST_GIT_TAG}..HEAD --pretty=format:"* %h %s" --no-merges >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: antigravity-${{ github.run_number }}
-          name: Antigravity Build ${{ github.run_number }}
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
           body: |
             ## Changes
             ${{ env.CHANGELOG }}

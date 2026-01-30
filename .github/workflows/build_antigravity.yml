@@ -40,19 +40,28 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+          local-cache: true
+
       - name: Install gomobile (SagerNet fork)
         run: |
           go install -v github.com/sagernet/gomobile/cmd/gomobile@v0.1.11
           go install -v github.com/sagernet/gomobile/cmd/gobind@v0.1.11
           $(go env GOPATH)/bin/gomobile init
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
       - name: Build Libbox AAR (Slim)
         working-directory: ./sing-box
         run: |
           export PATH=$(go env GOPATH)/bin:$PATH
           
-          # Slim tags from build-slim.yml
-          TAGS="with_gvisor,with_quic,with_utls,with_clash_api,with_naive_outbound,badlinkname,tfogo_checklinkname0,with_conntrack"
+          # Slim tags: Removed 'with_gvisor', kept 'with_naive_outbound'
+          TAGS="with_quic,with_utls,with_clash_api,with_naive_outbound,badlinkname,tfogo_checklinkname0,with_conntrack"
           
           # Get version
           VERSION=$(git describe --tags || echo "dev")
@@ -69,6 +78,8 @@ jobs:
             -ldflags "${LDFLAGS}" \
             -tags "${TAGS}" \
             ./experimental/libbox
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
       - name: Move Libbox AAR
         run: |

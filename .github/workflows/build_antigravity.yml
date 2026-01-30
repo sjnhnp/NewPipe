@@ -58,7 +58,33 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Generate Changelog
+        id: changelog
+        working-directory: ./NewPipe
+        run: |
+          # Get the last tag, default to initial commit if no tags
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Last tag: $LAST_TAG"
+          
+          # Generate changelog from last tag to HEAD
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log ${LAST_TAG}..HEAD --pretty=format:"* %h %s" --no-merges >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: antigravity-${{ github.run_number }}
+          name: Antigravity Build ${{ github.run_number }}
+          body: |
+            ## Changes
+            ${{ env.CHANGELOG }}
+          files: NewPipe/app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NewPipe-Antigravity-Debug

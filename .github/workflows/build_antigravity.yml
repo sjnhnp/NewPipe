@@ -43,6 +43,7 @@ jobs:
       - name: Build Libbox AAR
         working-directory: ./sing-box
         run: |
+          export PATH=$(go env GOPATH)/bin:$PATH
           go run ./cmd/internal/build_libbox -target android
         env:
           GOPATH: ${{ runner.workspace }}/go

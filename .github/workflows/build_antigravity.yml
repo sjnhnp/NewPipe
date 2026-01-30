@@ -127,9 +127,10 @@ jobs:
           
           # 2. Generate Changelog
           LAST_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "CHANGELOG<<EOF_CHANGELOG" >> $GITHUB_OUTPUT
           git log ${LAST_GIT_TAG}..HEAD --pretty=format:"* %h %s" --no-merges >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF_CHANGELOG" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

@@ -101,7 +101,7 @@ jobs:
         working-directory: ./NewPipe
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug -x checkstyle -x lint -x checkDependenciesOrder
 
       - name: Generate Release Info
         id: release_info

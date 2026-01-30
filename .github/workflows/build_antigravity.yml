@@ -101,7 +101,7 @@ jobs:
         working-directory: ./NewPipe
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug -x runCheckstyle -x runKtlint -x lint -x checkDependenciesOrder -DskipFormatKtlint
+          ./gradlew assembleRelease -x runCheckstyle -x runKtlint -x lint -x checkDependenciesOrder -DskipFormatKtlint
 
       - name: Generate Release Info
         id: release_info
@@ -133,12 +133,13 @@ jobs:
           body: |
             ## NewPipe Antigravity Build
             Automated build with slim Libbox AAR.
-          files: NewPipe/app/build/outputs/apk/debug/*.apk
+            Included architecture-specific (arm64, armv7, etc.) and universal APKs.
+          files: NewPipe/app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NewPipe-Antigravity-Debug
-          path: NewPipe/app/build/outputs/apk/debug/*.apk
+          name: NewPipe-Antigravity-Release
+          path: NewPipe/app/build/outputs/apk/release/*.apk

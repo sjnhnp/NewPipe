@@ -63,6 +63,7 @@ teamnewpipe-newpipe-extractor = "v0.25.1"
 viewpager2 = "1.1.0"
 webkit = "1.14.0" # Newer versions require minSdk >= 23
 work = "2.10.5"  # Newer versions require minSdk >= 23
+gson = "2.10.1"
 
 [libraries]
 acra-core = { module = "ch.acra:acra-core", version.ref = "acra" }
@@ -129,6 +130,7 @@ squareup-leakcanary-watcher = { module = "com.squareup.leakcanary:leakcanary-obj
 squareup-okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 squareup-picasso = { module = "com.squareup.picasso:picasso", version.ref = "picasso" }
 zacsweers-autoservice-compiler = { module = "dev.zacsweers.autoservice:auto-service-ksp", version.ref = "autoservice-zacsweers" }
+google-gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

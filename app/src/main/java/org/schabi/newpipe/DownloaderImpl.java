@@ -37,7 +37,7 @@ public final class DownloaderImpl extends Downloader {
 
     private static DownloaderImpl instance;
     private final Map<String, String> mCookies;
-    private final OkHttpClient client;
+    private volatile OkHttpClient client;
 
     private DownloaderImpl(final OkHttpClient.Builder builder) {
         this.client = builder
@@ -46,6 +46,12 @@ public final class DownloaderImpl extends Downloader {
 //                        16 * 1024 * 1024))
                 .build();
         this.mCookies = new HashMap<>();
+    }
+
+    public void updateProxy(java.net.Proxy proxy) {
+        this.client = this.client.newBuilder()
+                .proxy(proxy)
+                .build();
     }
 
     /**

@@ -132,6 +132,16 @@ public class App extends Application {
         configureRxJavaErrorHandler();
 
         YoutubeStreamExtractor.setPoTokenProvider(PoTokenProviderImpl.INSTANCE);
+
+        // Initialize Proxy Manager
+        String proxyConfig = PreferenceManager.getDefaultSharedPreferences(this)
+                .getString("proxy_config_json", "");
+        if (!proxyConfig.isEmpty()) {
+             org.schabi.newpipe.util.ProxyManager.getInstance(this).startProxy(proxyConfig);
+             // Assume port 10808 for now or parse it
+             // DownloaderImpl.getInstance().updateProxy(...);
+             // Delayed update might be needed, handled in ProxyManager is better if it knows about Downloader.
+        }
     }
 
     @Override

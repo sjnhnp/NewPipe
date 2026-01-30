@@ -1,0 +1,65 @@
+name: Build Antigravity NewPipe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout NewPipe
+        uses: actions/checkout@v4
+        with:
+          path: NewPipe
+
+      - name: Checkout sing-box
+        uses: actions/checkout@v4
+        with:
+          repository: sjnhnp/sing-box
+          path: sing-box
+          ref: dev-next
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install gomobile (SagerNet fork)
+        run: |
+          go install -v github.com/sagernet/gomobile/cmd/gomobile@v0.1.11
+          go install -v github.com/sagernet/gomobile/cmd/gobind@v0.1.11
+          $(go env GOPATH)/bin/gomobile init
+
+      - name: Build Libbox AAR
+        working-directory: ./sing-box
+        run: |
+          go run ./cmd/internal/build_libbox -target android
+        env:
+          GOPATH: ${{ runner.workspace }}/go
+
+      - name: Move Libbox AAR
+        run: |
+          mkdir -p NewPipe/app/libs
+          cp sing-box/libbox.aar NewPipe/app/libs/
+
+      - name: Build NewPipe
+        working-directory: ./NewPipe
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NewPipe-Antigravity-Debug
+          path: NewPipe/app/build/outputs/apk/debug/*.apk

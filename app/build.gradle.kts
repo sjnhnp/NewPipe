@@ -216,6 +216,7 @@ dependencies {
     implementation(libs.newpipe.nanojson)
     implementation(libs.newpipe.extractor)
     implementation(libs.newpipe.filepicker)
+    implementation(files("libs/libbox.aar"))
 
     /** Checkstyle **/
     checkstyle(libs.puppycrawl.checkstyle)
@@ -254,6 +255,7 @@ dependencies {
 
     // HTTP client
     implementation(libs.squareup.okhttp)
+    implementation(libs.google.gson)
 
     // Media player
     implementation(libs.google.exoplayer.core)

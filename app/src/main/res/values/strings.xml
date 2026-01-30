@@ -798,6 +798,15 @@
     <!-- New streams notifications -->
     <string name="notifications_disabled">Notifications are disabled</string>
     <string name="get_notified">Get notified</string>
+
+    <!-- Network Settings -->
+    <string name="settings_category_network_title">Network &amp; Proxy</string>
+    <string name="proxy_config_json_title">Sing-box Configuration (JSON)</string>
+    <string name="proxy_config_json_summary">Paste sing-box JSON. MUST include inbound SOCKS/Mixed on 127.0.0.1:10808.</string>
+    <string name="import_config_link_title">Import Config from Clipboard/Link</string>
+    <string name="import_config_link_summary">Parse vmess://, vless://, trojan:// links and populate config.</string>
+    <string name="import_success">Config imported successfully.</string>
+    <string name="import_failed">Failed to import config. Check logcat.</string>
     <string name="you_successfully_subscribed">You now subscribed to this channel</string>
     <string name="enumeration_comma">,</string>
     <string name="toggle_all">Toggle all</string>

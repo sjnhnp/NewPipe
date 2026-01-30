@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:title="@string/settings_category_network_title">
+
+    <PreferenceCategory android:title="@string/settings_category_network_title">
+        <EditTextPreference
+            android:key="proxy_config_json"
+            android:title="@string/proxy_config_json_title"
+            android:summary="@string/proxy_config_json_summary"
+            android:dialogTitle="@string/proxy_config_json_title" 
+            app:useSimpleSummaryProvider="true" />
+            
+        <Preference
+            android:key="import_config_link"
+            android:title="@string/import_config_link_title"
+            android:summary="@string/import_config_link_summary"
+            android:icon="@drawable/ic_file_download" />
+    </PreferenceCategory>
+</PreferenceScreen>

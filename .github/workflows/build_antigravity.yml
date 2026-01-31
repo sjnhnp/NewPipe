@@ -97,12 +97,6 @@ jobs:
           mkdir -p NewPipe/app/libs
           cp sing-box/libbox.aar NewPipe/app/libs/
 
-      - name: Build NewPipe
-        working-directory: ./NewPipe
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease -x runCheckstyle -x runKtlint -x lint -x checkDependenciesOrder -DskipFormatKtlint
-
       - name: Generate Release Info
         id: release_info
         working-directory: ./NewPipe
@@ -112,18 +106,44 @@ jobs:
           
           if [ -n "$INPUT_TAG" ]; then
             TAG_NAME="$INPUT_TAG"
+            # Attempt to extract a version code from the tag if it contains numbers (simple hashish)
+            # Or just use date + specific offset
+            VERSION_CODE=$(date +%s)
           else
-            # Get the last tag that matches our pattern (e.g. antigravity-*)
-            LAST_TAG=$(git describe --tags --match "antigravity-*" --abbrev=0 2>/dev/null || echo "antigravity-0")
-            # Extract number
-            LAST_NUM=$(echo $LAST_TAG | awk -F- '{print $2}')
-            # Increment
-            NEXT_NUM=$((LAST_NUM + 1))
-            TAG_NAME="antigravity-$NEXT_NUM"
+            # Get the last tag that matches v* (e.g. v1.0.0)
+            LAST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "v1.0.0")
+            
+            if [[ "$LAST_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${BASH_REMATCH[2]}"
+              PATCH="${BASH_REMATCH[3]}"
+              NEW_PATCH=$((PATCH + 1))
+              TAG_NAME="v$MAJOR.$MINOR.$NEW_PATCH"
+            else
+              # Fallback if tag doesn't match semver strictly
+              TAG_NAME="$LAST_TAG-1"
+            fi
+            
+            # Generate a version code (e.g. YYYYMMDDHH)
+            VERSION_CODE=$(date +%Y%m%d%H)
           fi
           
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
           echo "Tagging as: $TAG_NAME"
+          echo "Version Code: $VERSION_CODE"
+
+      - name: Build NewPipe
+        working-directory: ./NewPipe
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -DversionCodeOverride=${{ env.VERSION_CODE }} \
+            -x runCheckstyle \
+            -x runKtlint \
+            -x lint \
+            -x checkDependenciesOrder \
+            -DskipFormatKtlint
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -133,7 +153,8 @@ jobs:
           body: |
             ## NewPipe Antigravity Build
             Automated build with slim Libbox AAR.
-            Included architecture-specific (arm64, armv7, etc.) and universal APKs.
+            Version: ${{ env.TAG_NAME }}
+            Code: ${{ env.VERSION_CODE }}
           files: NewPipe/app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -141,5 +162,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NewPipe-Antigravity-Release
+          name: NewPipe-${{ env.TAG_NAME }}
           path: NewPipe/app/build/outputs/apk/release/*.apk

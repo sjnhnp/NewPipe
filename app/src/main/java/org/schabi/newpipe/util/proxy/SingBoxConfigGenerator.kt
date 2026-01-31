@@ -15,27 +15,29 @@ object SingBoxConfigGenerator {
         )
 
         // 2. DNS
-        // Strictly matching sb_mobile.json structure
+        // 1.12.0+ Spec: Use "type" + "server", deprecate "address"
         root["dns"] = mapOf(
             "servers" to listOf(
-                mapOf("tag" to "dns_direct", "type" to "quic", "server" to "223.5.5.5"),
-                mapOf("tag" to "dns_fakeip", "type" to "fakeip", "inet4_range" to "198.18.0.1/16")
+                mapOf(
+                    "tag" to "dns_direct",
+                    "type" to "quic", 
+                    "server" to "223.5.5.5",
+                    "detour" to "DIRECT"
+                ),
+                mapOf(
+                    "tag" to "dns_fakeip",
+                    "type" to "fakeip",
+                    "inet4_range" to "198.18.0.0/15"
+                )
             ),
-            "rules" to listOf(
-                mapOf("domain_suffix" to listOf("copilot.microsoft.com", "bing.com", "bible.com", "youversion.com", "youversionapi.com"), "server" to "dns_fakeip"),
-                mapOf("rule_set" to listOf("cn"), "query_type" to listOf("A"), "server" to "dns_direct"),
-                mapOf("query_type" to listOf("A"), "server" to "dns_fakeip")
-            ),
-            "final" to "dns_direct",
+            "final" to "dns_fakeip",
             "strategy" to "prefer_ipv4",
             "independent_cache" to true,
             "reverse_mapping" to true
         )
         
         // 3. Inbounds
-        // Only using mixed-in as we don't have TUN permission/capability in this mode usually, 
-        // but if we want to match strictly we can add tun-in structure if the app supports it.
-        // For now, we stick to mixed-in @ 7892 which is what NewPipe connects to.
+        // 1.12.0+ Spec: Remove "sniff" field (moved to route action)
         root["inbounds"] = listOf(
             mapOf(
                 "type" to "mixed",
@@ -46,36 +48,34 @@ object SingBoxConfigGenerator {
         )
 
         // 4. Outbounds
+        // 1.12.0+ Spec: Remove "block" and "dns" types
         val outbounds = mutableListOf<Map<String, Any>>()
         
-        // Main Proxy Outbound (The one generated from bean)
-        // In sb_mobile.json, this would be one of the nodes in a selector. 
-        // Here we make it the primary PROXY.
+        // Main Proxy Outbound
         val proxyOutbound = buildOutbound(bean)
         val proxyMap = proxyOutbound.toMutableMap()
-        proxyMap["tag"] = "PROXY" // Uppercase to match reference
+        proxyMap["tag"] = "PROXY"
         outbounds.add(proxyMap)
 
-        // Selectors are not needed for a single generated proxy, but structure should match logic.
-        // We will make "GLOBAL" select "PROXY" to mimic structure if needed, or just use PROXY directly.
-        // Reference uses specific tags: PROXY, AI, media, google, DIRECT, GLOBAL.
-        
-        // We add DIRECT
-        outbounds.add(mapOf("tag" to "DIRECT", "type" to "direct"))
+        // Direct Outbound
+        outbounds.add(mapOf("type" to "direct", "tag" to "DIRECT"))
 
         root["outbounds"] = outbounds
 
         // 5. Route
-        // Simplified routing: NewPipe traffic goes to PROXY.
         root["route"] = mapOf(
-            "default_domain_resolver" to mapOf("server" to "dns_direct"),
+            "default_domain_resolver" to "dns_direct",
             "rules" to listOf(
-                mapOf("port" to 53, "action" to "hijack-dns"),
-                mapOf("protocol" to "dns", "outbound" to "dns-out"),
-                mapOf("inbound" to "mixed-in", "outbound" to "PROXY"), // All inbound traffic from app -> PROXY
+                // Action: Sniff (Migrated from inbound.sniff)
+                mapOf("inbound" to "mixed-in", "action" to "sniff", "timeout" to "300ms"),
                 
-                // Safety net: Private IPs should always be DIRECT to avoid loop/timeout 
-                // if users try to access local network resources, though less critical for pure NewPipe usage.
+                // Action: Hijack DNS (Standard intercept)
+                mapOf("port" to 53, "action" to "hijack-dns"),
+                
+                // Traffic Routing: App -> PROXY
+                mapOf("inbound" to "mixed-in", "outbound" to "PROXY"),
+                
+                // Safety net: Private IPs -> DIRECT
                 mapOf("ip_cidr" to listOf("224.0.0.0/3", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16", "10.0.0.0/8", "127.0.0.0/8"), "outbound" to "DIRECT")
             ),
             "final" to "PROXY",

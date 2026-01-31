@@ -26,6 +26,11 @@ import io.nekohasekai.libbox.StringIterator;
 import io.nekohasekai.libbox.Notification;
 import io.nekohasekai.libbox.LocalDNSTransport;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 public class ProxyManager implements CommandServerHandler, PlatformInterface {
     private static final String TAG = "ProxyManager";
     private static volatile ProxyManager instance;
@@ -60,27 +65,32 @@ public class ProxyManager implements CommandServerHandler, PlatformInterface {
                 commandServer.startOrReloadService(configContent, options);
                 Log.i(TAG, "Sing-box service started/reloaded.");
 
-                // Parse config to find the inbound port?
-                // For simplicity, we assume the user configures a specific port or we parse it.
-                // However, parsing JSON here is tedious. 
-                // A better approach is to force a standardized port for the internal proxy, e.g. 10808,
-                // and inject it into the config if we were constructing it.
-                // But the user provides the full config.
-                // Let's assume the user configures an inbound on port 12345 (SOCKS) for NewPipe.
-                
-                // TODO: In a real implementation, we should extract the port from configContent.
-                // accepting "127.0.0.1:12345" as the target proxy.
-                
-                // For this implementation, let's assume the user is instructed to use a specific port 
-                // or we update the UI to ask for "Proxy Host" and "Proxy Port".
+                // Parse config to find the inbound port
+                int proxyPort = 10808; // Default
+                try {
+                    JsonObject config = new Gson().fromJson(configContent, JsonObject.class);
+                    if (config.has("inbounds")) {
+                        JsonArray inbounds = config.getAsJsonArray("inbounds");
+                        for (JsonElement inbound : inbounds) {
+                            JsonObject inboundObj = inbound.getAsJsonObject();
+                            if (inboundObj.has("type") && inboundObj.get("type").getAsString().equals("mixed")) {
+                                if (inboundObj.has("listen_port")) {
+                                    proxyPort = inboundObj.get("listen_port").getAsInt();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing proxy config for port, using default 10808", e);
+                }
                 
                 // Update NewPipe Downloader to use the proxy
                 DownloaderImpl downloader = DownloaderImpl.getInstance();
                 if (downloader != null) {
-                    // Assuming port 10808 and SOCKS protocol for now. 
-                    // Ideally this should be parsed from the config.
-                    downloader.updateProxy(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 10808)));
-                    Log.i(TAG, "Downloader proxy updated to SOCKS@127.0.0.1:10808");
+                    // Update proxy with dynamic port
+                    downloader.updateProxy(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", proxyPort)));
+                    Log.i(TAG, "Downloader proxy updated to SOCKS@127.0.0.1:" + proxyPort);
                 }
                 
             } catch (Exception e) {

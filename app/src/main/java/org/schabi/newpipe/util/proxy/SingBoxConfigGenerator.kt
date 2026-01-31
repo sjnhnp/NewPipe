@@ -1,6 +1,5 @@
 package org.schabi.newpipe.util.proxy
 
-import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 
 object SingBoxConfigGenerator {
@@ -8,56 +7,76 @@ object SingBoxConfigGenerator {
     fun generate(bean: StandardV2RayBean): String {
         val root = mutableMapOf<String, Any>()
 
-        // Log
-        root["log"] = mapOf("level" to "info", "timestamp" to true)
+        // 1. Log
+        root["log"] = mapOf(
+            "disabled" to false,
+            "level" to "error",
+            "timestamp" to true
+        )
 
-        // DNS
+        // 2. DNS
+        // Using a modernized DNS structure similar to reference, but simplified for single-proxy usage
         root["dns"] = mapOf(
             "servers" to listOf(
-                mapOf("tag" to "google", "address" to "8.8.8.8", "detour" to "proxy"),
-                mapOf("tag" to "local", "address" to "local", "detour" to "direct")
+                mapOf("tag" to "dns_remote", "address" to "8.8.8.8", "detour" to "proxy"),
+                mapOf("tag" to "dns_direct", "address" to "local", "detour" to "direct"),
+                mapOf("tag" to "dns_block", "address" to "rcode://refused")
             ),
             "rules" to listOf(
-                mapOf("outbound" to "any", "server" to "local")
+                mapOf("outbound" to "any", "server" to "dns_direct"),
+                mapOf("clash_mode" to "direct", "server" to "dns_direct"),
+                mapOf("clash_mode" to "global", "server" to "dns_remote")
             ),
-            "final" to "local"
+            "final" to "dns_remote",
+            "strategy" to "prefer_ipv4",
+            "independent_cache" to true
         )
         
-        // Inbounds
+        // 3. Inbounds
+        // Match user reference port 7892
         root["inbounds"] = listOf(
             mapOf(
                 "type" to "mixed",
                 "tag" to "mixed-in",
                 "listen" to "127.0.0.1",
-                "listen_port" to 10808,
+                "listen_port" to 7892,
                 "sniff" to true
             )
         )
 
-        // Outbounds
+        // 4. Outbounds
         val outbounds = mutableListOf<Map<String, Any>>()
         
-        // Proxy Outbound
+        // Proxy Outbound (The active one)
         val proxyOutbound = buildOutbound(bean)
-        outbounds.add(proxyOutbound)
+        // Ensure tag is "proxy" for routing reference
+        val proxyMap = proxyOutbound.toMutableMap()
+        proxyMap["tag"] = "proxy"
+        outbounds.add(proxyMap)
 
-        // Direct/Block
+        // Direct
         outbounds.add(mapOf("type" to "direct", "tag" to "direct"))
+        // Block
         outbounds.add(mapOf("type" to "block", "tag" to "block"))
+        // DNS Out
         outbounds.add(mapOf("type" to "dns", "tag" to "dns-out"))
 
         root["outbounds"] = outbounds
 
-        // Route
+        // 5. Route
         root["route"] = mapOf(
             "rules" to listOf(
                 mapOf("protocol" to "dns", "outbound" to "dns-out"),
-                mapOf("inbound" to "mixed-in", "outbound" to "proxy")
+                mapOf("inbound" to "mixed-in", "outbound" to "proxy"),
+                // Add basic direct rules for local/private IPs to ensure safety
+                mapOf("ip_cidr" to listOf("224.0.0.0/3", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16", "10.0.0.0/8", "127.0.0.0/8"), "outbound" to "direct"),
+                mapOf("domain_suffix" to listOf("cn"), "outbound" to "direct")
             ),
+            "final" to "proxy",
             "auto_detect_interface" to true
         )
         
-        // Experimental (for cache file)
+        // 6. Experimental
         root["experimental"] = mapOf(
              "cache_file" to mapOf("enabled" to true, "store_fakeip" to false)
         )
